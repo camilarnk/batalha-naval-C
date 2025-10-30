@@ -1,11 +1,16 @@
 // Escuta conexões e controla o jogo (primeiro jogador), executado antes do client
+// compile: gcc server.c -o server.exe -lws2_32
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
 #include <ctype.h>
+#include <string.h>
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
 
 #define TAM 10
+#define PORTA 5000 // porta de comunicaçao, pode ser alterada
 
 char meu_tabuleiro[TAM][TAM];
 char tabuleiro_inimigo[TAM][TAM];
@@ -15,16 +20,77 @@ void inicializar_tabuleiros();
 void mostrar_tabuleiros();
 void posicionar_barcos(); 
 void mostrar_tabuleiro_posicionando();
-void realizar_ataque(char tabuleiro_inimigo[TAM][TAM], char tabuleiro_real_inimigo[TAM][TAM]);
+void realizar_ataque(SOCKET sock); // envia ataque via socket
+void receber_ataque(SOCKET sock); // recebe ataque do cliente
 
 int main() {
     setlocale(LC_ALL, "Portuguese");
-    printf("Servidor iniciado\n");
+
+    // ==== INICIALIZANDO SERVIDOR SOCKET ====
+    WSADATA wsa;
+    SOCKET servidor_socket, cliente_socket;
+    struct sockaddr_in servidor, cliente;
+    int tamanho_cliente = sizeof(cliente);
+
+    printf("Inicializando servidor\n");
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        printf("Falha ao inicializar Winsock. Erro: %d\n", WSAGetLastError());
+        return 1;
+    }
+
+    // criando socket
+    servidor_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (servidor_socket == INVALID_SOCKET) {
+        printf("Erro ao criar socket: %d\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
+
+    servidor.sin_family = AF_INET;
+    servidor.sin_addr.s_addr = INADDR_ANY; // aceita conexões locais
+    servidor.sin_port = htons(PORTA);
+
+    // ligando o socket à porta
+    if (bind(servidor_socket, (struct sockaddr *)&servidor, sizeof(servidor)) == SOCKET_ERROR) {
+        printf("Erro ao associar porta: %d\n", WSAGetLastError());
+        closesocket(servidor_socket);
+        WSACleanup();
+        return 1;
+    }
+
+    // esperando outra conexão
+    listen(servidor_socket, 1);
+    printf("Aguardando conexao do jogador 2...\n");
+
+    cliente_socket = accept(servidor_socket, (struct sockaddr *)&cliente, &tamanho_cliente);
+    if (cliente_socket == INVALID_SOCKET) {
+        printf("Erro ao aceitar conexao: %d\n", WSAGetLastError());
+        closesocket(servidor_socket);
+        WSACleanup();
+        return 1;
+    }
+    printf("Jogador 2 conectado!\n");
+    // ==== FIM DA INICIALIZAÇÃO ====
 
     tela_inicial();
     inicializar_tabuleiros();
     posicionar_barcos();
     mostrar_tabuleiros();
+
+    // loop principal do jogo
+    while(1) {
+        // jogador 1 (server) ataca primeiro
+        realizar_ataque(cliente_socket); // envia ataque
+        mostrar_tabuleiros();
+
+        // jogador 1 recebe o ataque do jogador 2 (cliente)
+        receber_ataque(cliente_socket);
+        mostrar_tabuleiros();
+    }
+
+    closesocket(cliente_socket);
+    closesocket(servidor_socket);
+    WSACleanup();
 
     return 0;
 }
@@ -40,12 +106,12 @@ void tela_inicial() {
     printf("- Cada jogador tem um tabuleiro proprio e outro com os acertos/erros do tabuleiro inimigo\n");
     printf("- Posicione seus navios escolhendo a posicao inicial (linha/coluna) e a orientacao (H ou V)\n");
     printf("- Escolha uma posicao por vez para descobrir se o adversario tem ou nao um pedaco de navio naquela casa\n");
-    printf("- Acertos no tabulheiro do inimigo sao marcados com um 'X', e erros sao marcados com um 'O'\n");
+    printf("- 'X' marca acertos e 'O' marca tiros na agua.\n");
     printf("- Vence quem afundar todos os navios do adversario primeiro\n");
 
     printf("\nPressione Enter para continuar\n");
     getchar(); // espera o jogador apertar enter para continuar
-    system("cls"); 
+    //system("cls"); 
 }
 
 void inicializar_tabuleiros(){
@@ -153,7 +219,7 @@ void posicionar_barcos() {
                 if(meu_tabuleiro[x][y] != '~') sobreposicao = 1; // se nao tiver agua na posicao escolhida, ela esta invalida
             }
             if(sobreposicao) {
-                printf("Ja ha um barco nesta posicao. Tente novamente\n");
+                printf("Ha outro navio nessa posicao. Tente novamente\n");
                 continue;
             }
 
@@ -169,29 +235,60 @@ void posicionar_barcos() {
         }
     }
     printf("\nTodos os navios foram posicionados!");
-    printf("\nPressione Enter para iniciar o jogo");
+    printf("\nPressione Enter para continuar o jogo");
     while (getchar() != '\n'); // limpa o buffer
     getchar(); // espera o Enter
     system("cls");
 }
 
-void realizar_ataque(char tabuleiro_inimigo[TAM][TAM], char tabuleiro_real_inimigo[TAM][TAM]) {
+void realizar_ataque(SOCKET sock) {
     int linha, col;
+    char mensagem[32], resposta[16];
 
-    printf("\nEscolha onde atirar:\n");
+    printf("\nSua vez! Escolha onde atirar:\n");
     printf("Linha (0-%d): ", TAM-1);
     scanf("%d", &linha);
     printf("Coluna (0-%d): ", TAM-1);
     scanf("%d", &col);
 
-    if(tabuleiro_real_inimigo[linha][col] != '~') {
-        printf("\n💥 Acertou um pedaço de navio do inimigo!\n");
-        // marcando dano no tabuleiro de registro e no tabuleiro real do inimigo
+    // envia ataque para o cliente "linha,coluna"
+    sprintf(mensagem, "%d,%d", linha, col);
+    send(sock, mensagem, strlen(mensagem), 0);
+
+    // recebe resposta "HIT" se acertou ou "MISS" se errou
+    recv(sock, resposta, sizeof(resposta), 0);
+
+    if(strcmp(resposta, "HIT") == 0) {
+        printf("\n💥 Acertou um navio inimigo!\n");
         tabuleiro_inimigo[linha][col] = 'X';
-        tabuleiro_real_inimigo[linha][col] = 'X';
     } else {
         printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
-        // marcando erro no tabuleiro de registro
         tabuleiro_inimigo[linha][col] = 'O';
     }
 }
+
+void receber_ataque(SOCKET sock) {
+    int linha, col;
+    char mensagem[32], resposta[16];
+
+    printf("\nAguardando ataque do inimigo...\n");
+    recv(sock, mensagem, sizeof(mensagem), 0);
+    sscanf(mensagem, "%d,%d", &linha, &col); // atribuindo o ataque do inimigo para a linha e coluna
+
+    // verificando se o ataque atingiu alguma posicao
+    if(meu_tabuleiro[linha][col] != '~' && meu_tabuleiro[linha][col] != 'X') {
+        printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
+        meu_tabuleiro[linha][col] = 'X';
+        strcpy(resposta, "HIT");
+    } else {
+        printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
+        if(meu_tabuleiro[linha][col] == '~') {
+            meu_tabuleiro[linha][col] = 'O';
+        }
+        strcpy(resposta, "MISS");
+    }
+
+    // envia o resultado de volta
+    send(sock, resposta, strlen(resposta), 0);
+}
+
