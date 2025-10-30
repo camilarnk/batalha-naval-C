@@ -18,6 +18,8 @@ Cada jogador possui seu próprio tabuleiro e troca mensagens com o outro process
  └── .gitignore
 ```
 
+---
+
 ## 🧩 Compilação Manual via Terminal
 
 Abra dois terminais (ou abas do PowerShell/CMD) na pasta do projeto.
@@ -46,6 +48,8 @@ E execute:
 ./client.exe
 ```
 O cliente se conectará automaticamente ao servidor e o jogo começará.
+
+---
 
 ## 🧠 Dica — Usando o VS Code
 Se estiver usando Visual Studio Code, o projeto já contém um arquivo de tarefas (.vscode/tasks.json) configurado para compilar facilmente os dois programas.
