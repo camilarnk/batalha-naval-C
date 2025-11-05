@@ -26,6 +26,12 @@ void receber_ataque(SOCKET sock); // recebe ataque do cliente
 int verificar_derrota();
 int verificar_vitoria();
 
+void esperar_enter() {
+    // espera o jogador apertar enter de forma segura, substitui getchar()
+    char buf[32];
+    fgets(buf, sizeof(buf), stdin); // lê até o enter (ou fim da linha)
+}
+
 int main() {
     setlocale(LC_ALL, "Portuguese");
 
@@ -79,6 +85,17 @@ int main() {
     inicializar_tabuleiros();
     posicionar_barcos();
     mostrar_tabuleiros();
+
+    /* sincronização: servidor informa que está pronto e espera o cliente */
+    send(cliente_socket, "PRONTO", 6, 0); // avisa o cliente
+    char buf_sync[16];
+    int bytes = recv(cliente_socket, buf_sync, sizeof(buf_sync) - 1, 0);
+    if (bytes > 0) {
+        buf_sync[bytes] = '\0';
+        if (strcmp(buf_sync, "PRONTO") == 0) {
+            printf("\n✅ Ambos os jogadores estão prontos. Iniciando partida!\n");
+        }
+    }
 
     // loop principal do jogo (servidor - jogador 1)
     while(1) {
@@ -144,16 +161,15 @@ void tela_inicial() {
     printf("4. Destroyer (D)     (2 blocos)   ##\n");
 
     printf("\nRegras do jogo:\n");
-    printf("- Cada jogador tem um tabuleiro proprio e outro com os acertos/erros do tabuleiro inimigo\n");
+    printf("- Cada jogador tem um tabuleiro proprio e outro com os acertos/erros do inimigo\n");
     printf("- Posicione seus navios escolhendo a posicao inicial (linha/coluna) e a orientacao (H ou V)\n");
-    printf("- Escolha uma posicao por vez para descobrir se o adversario tem ou nao um pedaco de navio naquela casa\n");
-    printf("- 'X' marca acertos e 'O' marca tiros na agua.\n");
-    printf("- Vence quem afundar todos os navios do adversario primeiro\n");
+    printf("- Escolha posicoes para atacar o adversario e tente afundar todos os navios\n");
+    printf("- 'X' = acerto, 'O' = tiro na água\n");
+    printf("- Vence quem afundar todos os navios inimigos primeiro\n");
 
-    printf("\nPressione Enter para continuar\n");
-    getchar(); // espera o jogador apertar enter para continuar
-    //system("cls"); 
-    while (getchar() != '\n');
+    printf("\nPressione Enter para continuar...\n");
+    fflush(stdout);
+    esperar_enter();
 }
 
 void inicializar_tabuleiros(){
@@ -277,11 +293,9 @@ void posicionar_barcos() {
         }
     }
     printf("\nTodos os navios foram posicionados!");
-    printf("\nPressione Enter para continuar o jogo");
-    while (getchar() != '\n'); // limpa o buffer
-    getchar(); // espera o Enter
-    // system("cls");
-    printf("\033[2J\033[H"); // limpar o terminal
+    printf("\nPressione Enter para continuar o jogo...");
+    esperar_enter();
+    printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)
 }
 
 void realizar_ataque(SOCKET sock) {
