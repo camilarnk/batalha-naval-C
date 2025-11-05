@@ -1,7 +1,14 @@
 # 🛳️ Batalha Naval em C (Cliente/Servidor)
 
 Este projeto implementa uma versão simples do jogo **Batalha Naval** utilizando **sockets** para comunicação entre **dois processos** — um **servidor** e um **cliente**.  
-Cada jogador possui seu próprio tabuleiro e troca mensagens com o outro processo para controlar as jogadas.
+
+Cada jogador possui seu próprio tabuleiro e troca mensagens via socket TCP com o outro processo para controlar as jogadas, mandando mensagens como:
+```bash
+"3,4"   → ataque na linha 3, coluna 4
+"HIT"   → acerto
+"MISS"  → erro
+"DERROTA" ou "VITORIA" → fim de jogo
+```
 
 ---
 
