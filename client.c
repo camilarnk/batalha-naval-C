@@ -10,6 +10,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 #define TAM 10
+#define TOTAL_BLOCOS 14 // quantidade de blocos do tabuleiro que possuem navios
 #define PORTA 5000
 #define IP_SERVIDOR "127.0.0.1" // IP local do servidor (mesma máquina)
 
@@ -23,6 +24,8 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque ao servidor
 void receber_ataque(SOCKET sock);  // recebe ataque do servidor
+int verificar_derrota();
+int verificar_vitoria();
 
 int main() {
     setlocale(LC_ALL, "Portuguese");
@@ -64,15 +67,45 @@ int main() {
     posicionar_barcos();
     mostrar_tabuleiros();
 
-    // loop principal do jogo
+    // loop principal do jogo (cliente - jogador 2)
     while(1) {
         // jogador 2 (cliente) recebe ataque primeiro
         receber_ataque(sock);
         mostrar_tabuleiros();
 
+        if(verificar_derrota()) {
+            printf("\n💥 Todos os seus navios foram afundados! Você perdeu!\n");
+            send(sock, "DERROTA", 7, 0);
+            break;
+        }
+
         // jogador 2 ataca o jogador 1 (server)
         realizar_ataque(sock);
         mostrar_tabuleiros();
+
+        if (verificar_vitoria()) {
+            printf("\n🎉 Todos os navios inimigos foram afundados! Você venceu!\n");
+            send(sock, "VITORIA", 7, 0);
+            break;
+        }
+
+         // checa se o outro jogador declarou derrota (sem travar o jogo de repente)
+        char mensagem[32];
+        fd_set fds;
+        struct timeval timeout;
+        FD_ZERO(&fds);
+        FD_SET(sock, &fds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+
+        int activity = select(0, &fds, NULL, NULL, &timeout);
+        if (activity > 0) {
+            int bytes = recv(sock, mensagem, sizeof(mensagem), 0);
+            if (bytes > 0 && strstr(mensagem, "DERROTA")) {
+                printf("\n🏆 O inimigo foi derrotado! Você venceu!\n");
+                break;
+            }
+        }
     }
 
     closesocket(sock);
@@ -98,7 +131,7 @@ void tela_inicial() {
     printf("\nPressione Enter para continuar\n");
     getchar(); // espera o jogador apertar enter para continuar
     //system("cls"); 
-    fflush(stdin);
+    while (getchar() != '\n');
 }
 
 void inicializar_tabuleiros(){
@@ -138,7 +171,7 @@ void mostrar_tabuleiros() {
         printf("%d  ", i); // imprimindo o numero das linhas
 
         for(int j=0; j<TAM; j++) {
-            printf("%c ", meu_tabuleiro[i][j]); // imprimindo cada posicao do tabuleiro do inimigo
+            printf("%c ", tabuleiro_inimigo[i][j]); // imprimindo cada posicao do tabuleiro do inimigo
         }
         printf("\n");
     }
@@ -225,7 +258,8 @@ void posicionar_barcos() {
     printf("\nPressione Enter para continuar o jogo");
     while (getchar() != '\n'); // limpa o buffer
     getchar(); // espera o Enter
-    system("cls");
+    // system("cls");
+    printf("\033[2J\033[H"); // limpar o terminal
 }
 
 void realizar_ataque(SOCKET sock) {
@@ -243,7 +277,10 @@ void realizar_ataque(SOCKET sock) {
     send(sock, mensagem, strlen(mensagem), 0);
 
     // recebe resposta "HIT" se acertou ou "MISS" se errou
-    recv(sock, resposta, sizeof(resposta), 0);
+    int bytes = recv(sock, resposta, sizeof(resposta) - 1, 0);
+    if (bytes > 0) {
+        resposta[bytes] = '\0';
+    }
 
     if(strcmp(resposta, "HIT") == 0) {
         printf("\n💥 Acertou um navio inimigo!\n");
@@ -259,7 +296,10 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
 
     printf("\nAguardando ataque do inimigo...\n");
-    recv(sock, mensagem, sizeof(mensagem), 0);
+    int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
+    if (bytes > 0) {
+        mensagem[bytes] = '\0';
+    }
     sscanf(mensagem, "%d,%d", &linha, &col); // atribuindo o ataque do inimigo para a linha e coluna
 
     // verificando se o ataque atingiu alguma posicao
@@ -275,11 +315,30 @@ void receber_ataque(SOCKET sock) {
         strcpy(resposta, "MISS");
     }
 
-    int bytes = recv(sock, mensagem, sizeof(mensagem), 0);
-    if (bytes <= 0) {
-        printf("\nConexão encerrada pelo outro jogador.\n");
-        closesocket(sock);
-        WSACleanup();
-        exit(0);
+    // envia a resposta
+    send(sock, resposta, strlen(resposta), 0);
+}
+
+int verificar_derrota() {
+    // verifica se ainda há algum navio no tabuleiro do jogador
+    for(int i = 0; i < TAM; i++) {
+        for(int j = 0; j < TAM; j++) {
+            if(meu_tabuleiro[i][j] == 'P' || meu_tabuleiro[i][j] == 'E' ||
+                meu_tabuleiro[i][j] == 'S' || meu_tabuleiro[i][j] == 'D') {
+                return 0; // ainda tem navios
+            }
+        }
     }
+    return 1; // todos navios foram afundados
+}
+
+int verificar_vitoria() {
+    // verifica se o jogador afundou todos os navios do inimigo
+    int acertos = 0;
+    for(int i = 0; i < TAM; i++) {
+        for(int j = 0; j < TAM; j++) {
+            if(tabuleiro_inimigo[i][j] == 'X') acertos++;
+        }
+    }
+    return acertos >= TOTAL_BLOCOS; // total atual de blocos de navios inimigos
 }
