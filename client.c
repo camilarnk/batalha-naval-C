@@ -71,7 +71,7 @@ int main() {
         mostrar_tabuleiros();
 
         // jogador 2 ataca o jogador 1 (server)
-        receber_ataque(sock);
+        realizar_ataque(sock);
         mostrar_tabuleiros();
     }
 
@@ -98,6 +98,7 @@ void tela_inicial() {
     printf("\nPressione Enter para continuar\n");
     getchar(); // espera o jogador apertar enter para continuar
     //system("cls"); 
+    fflush(stdin);
 }
 
 void inicializar_tabuleiros(){
@@ -274,6 +275,11 @@ void receber_ataque(SOCKET sock) {
         strcpy(resposta, "MISS");
     }
 
-    // envia o resultado de volta
-    send(sock, resposta, strlen(resposta), 0);
+    int bytes = recv(sock, mensagem, sizeof(mensagem), 0);
+    if (bytes <= 0) {
+        printf("\nConexão encerrada pelo outro jogador.\n");
+        closesocket(sock);
+        WSACleanup();
+        exit(0);
+    }
 }
