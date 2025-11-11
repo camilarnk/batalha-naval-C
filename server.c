@@ -25,6 +25,8 @@ void realizar_ataque(SOCKET sock); // envia ataque via socket
 void receber_ataque(SOCKET sock); // recebe ataque do cliente
 int verificar_derrota();
 int verificar_vitoria();
+char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
+char* obter_nome_navio(char simbolo); // retorna o nome do navio baseado no simbolo
 
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
@@ -321,6 +323,7 @@ void posicionar_barcos() {
 void realizar_ataque(SOCKET sock) {
     int linha, col;
     char mensagem[32], resposta[16];
+    char msg_afundado[32];
 
     printf("\nSua vez! Escolha onde atirar:\n");
     printf("Linha (0-%d): ", TAM-1);
@@ -341,6 +344,27 @@ void realizar_ataque(SOCKET sock) {
     if(strcmp(resposta, "HIT") == 0) {
         printf("\n💥 Acertou um navio inimigo!\n");
         tabuleiro_inimigo[linha][col] = 'X';
+        
+        // verifica se há mensagem de navio afundado disponível
+        fd_set fds;
+        struct timeval timeout;
+        FD_ZERO(&fds);
+        FD_SET(sock, &fds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000; // 100ms para receber mensagem de afundado
+        
+        int activity = select(0, &fds, NULL, NULL, &timeout);
+        if (activity > 0) {
+            bytes = recv(sock, msg_afundado, sizeof(msg_afundado) - 1, 0);
+            if (bytes > 0) {
+                msg_afundado[bytes] = '\0';
+                if (strstr(msg_afundado, "AFUNDADO:") != NULL) {
+                    char simbolo = msg_afundado[9]; // "AFUNDADO:X" -> posição 9
+                    char* nome_navio = obter_nome_navio(simbolo);
+                    printf("\n🎯 VOCE AFUNDOU O %s INIMIGO!\n", nome_navio);
+                }
+            }
+        }
     } else {
         printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
         tabuleiro_inimigo[linha][col] = 'O';
@@ -350,6 +374,7 @@ void realizar_ataque(SOCKET sock) {
 void receber_ataque(SOCKET sock) {
     int linha, col;
     char mensagem[32], resposta[16];
+    char simbolo_navio = '\0'; // inicializa com valor padrão
 
     printf("\nAguardando ataque do inimigo...\n");
     int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
@@ -359,8 +384,9 @@ void receber_ataque(SOCKET sock) {
     sscanf(mensagem, "%d,%d", &linha, &col); // atribuindo o ataque do inimigo para a linha e coluna
 
     // verificando se o ataque atingiu alguma posicao
-    if(meu_tabuleiro[linha][col] != '~' && meu_tabuleiro[linha][col] != 'X') {
+    if(meu_tabuleiro[linha][col] != '~' && meu_tabuleiro[linha][col] != 'X' && meu_tabuleiro[linha][col] != 'O') {
         printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
+        simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
     } else {
@@ -371,8 +397,17 @@ void receber_ataque(SOCKET sock) {
         strcpy(resposta, "MISS");
     }
 
-    // envia a resposta
+    // envia a resposta primeiro (HIT ou MISS)
     send(sock, resposta, strlen(resposta), 0);
+    
+    // se foi HIT, verifica se o navio foi completamente afundado
+    if(strcmp(resposta, "HIT") == 0 && simbolo_navio != '\0' && verificar_navio_afundado(simbolo_navio)) {
+        char msg_afundado[32];
+        sprintf(msg_afundado, "AFUNDADO:%c", simbolo_navio);
+        send(sock, msg_afundado, strlen(msg_afundado), 0);
+        char* nome_navio = obter_nome_navio(simbolo_navio);
+        printf("\n💀 SEU %s FOI AFUNDADO PELO INIMIGO!\n", nome_navio);
+    }
 }
 
 int verificar_derrota() {
@@ -397,4 +432,27 @@ int verificar_vitoria() {
         }
     }
     return acertos >= TOTAL_BLOCOS; // total atual de blocos de navios inimigos
+}
+
+char verificar_navio_afundado(char simbolo) {
+    // verifica se todas as casas de um navio específico foram acertadas
+    for(int i = 0; i < TAM; i++) {
+        for(int j = 0; j < TAM; j++) {
+            if(meu_tabuleiro[i][j] == simbolo) {
+                return 0; // ainda há casas não acertadas deste navio
+            }
+        }
+    }
+    return 1; // todas as casas deste navio foram acertadas (navio afundado)
+}
+
+char* obter_nome_navio(char simbolo) {
+    // retorna o nome do navio baseado no simbolo
+    switch(simbolo) {
+        case 'P': return "PORTA-AVIOES";
+        case 'E': return "ENCOURACADO";
+        case 'S': return "SUBMARINO";
+        case 'D': return "DESTROYER";
+        default: return "NAVIO";
+    }
 }
