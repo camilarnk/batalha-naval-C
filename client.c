@@ -86,22 +86,34 @@ int main() {
 
     // loop principal do jogo (cliente - jogador 2)
     while(1) {
+        printf("\n\n===========================================\n");
+        printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
+        printf("===========================================\n");
         // jogador 2 (cliente) recebe ataque primeiro
         receber_ataque(sock);
         mostrar_tabuleiros();
 
         if(verificar_derrota()) {
-            printf("\n💥 Todos os seus navios foram afundados! Você perdeu!\n");
+            printf("\n\n===========================================\n");
+            printf("=====           FIM DE JOGO           =====\n");
+            printf("===========================================\n");
+            printf("\n💥 Todos os seus navios foram afundados! Voce perdeu!\n");
             send(sock, "DERROTA", 7, 0);
             break;
         }
 
+        printf("\n\n===========================================\n");
+        printf("=====        SUA VEZ DE ATACAR         =====\n");
+        printf("===========================================\n");
         // jogador 2 ataca o jogador 1 (server)
         realizar_ataque(sock);
         mostrar_tabuleiros();
 
         if (verificar_vitoria()) {
-            printf("\n🎉 Todos os navios inimigos foram afundados! Você venceu!\n");
+            printf("\n\n===========================================\n");
+            printf("=====           FIM DE JOGO           =====\n");
+            printf("===========================================\n");
+            printf("\n🎉 Todos os navios inimigos foram afundados! Voce venceu!\n");
             send(sock, "VITORIA", 7, 0);
             break;
         }
@@ -119,7 +131,10 @@ int main() {
         if (activity > 0) {
             int bytes = recv(sock, mensagem, sizeof(mensagem), 0);
             if (bytes > 0 && strstr(mensagem, "DERROTA")) {
-                printf("\n🏆 O inimigo foi derrotado! Você venceu!\n");
+                printf("\n\n===========================================\n");
+                printf("=====           FIM DE JOGO           =====\n");
+                printf("===========================================\n");
+                printf("\n🏆 O inimigo foi derrotado! Voce venceu!\n");
                 break;
             }
         }
@@ -132,7 +147,9 @@ int main() {
 }
 
 void tela_inicial() {
-    printf("\nBEM VINDO AO BATALHA NAVAL\n--------------------------\nBarcos disponiveis: \n");
+    printf("\n\n====     BEM VINDO AO BATALHA NAVAL     ====\n");
+    printf("============================================\n");
+    printf("====         BARCOS DISPONIVEIS:        ====\n");
     printf("1. Porta-avioes (P)  (5 blocos)   #####\n");
     printf("2. Encouracado (E)   (4 blocos)   ####\n");
     printf("3. Submarino (S)     (3 blocos)   ###\n");
@@ -142,7 +159,7 @@ void tela_inicial() {
     printf("- Cada jogador tem um tabuleiro proprio e outro com os acertos/erros do inimigo\n");
     printf("- Posicione seus navios escolhendo a posicao inicial (linha/coluna) e a orientacao (H ou V)\n");
     printf("- Escolha posicoes para atacar o adversario e tente afundar todos os navios\n");
-    printf("- 'X' = acerto, 'O' = tiro na água\n");
+    printf("- 'X' = acerto, 'O' = tiro na agua\n");
     printf("- Vence quem afundar todos os navios inimigos primeiro\n");
 
     printf("\nPressione Enter para continuar...\n");
@@ -270,7 +287,9 @@ void posicionar_barcos() {
             valido = 1;
         }   
     }
-    printf("\nTodos os navios foram posicionados!");
+    printf("\n\n===========================================\n");
+    printf("=====  TODOS OS NAVIOS POSICIONADOS   =====\n");
+    printf("===========================================\n");
     printf("\nPressione Enter para continuar o jogo...");
     esperar_enter();
     printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)

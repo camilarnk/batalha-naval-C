@@ -93,28 +93,40 @@ int main() {
     if (bytes > 0) {
         buf_sync[bytes] = '\0';
         if (strcmp(buf_sync, "PRONTO") == 0) {
-            printf("\n✅ Ambos os jogadores estão prontos. Iniciando partida!\n");
+            printf("\n✅ Ambos os jogadores estao prontos. Iniciando partida!\n");
         }
     }
 
     // loop principal do jogo (servidor - jogador 1)
     while(1) {
+        printf("\n\n===========================================\n");
+        printf("=====        SUA VEZ DE ATACAR         =====\n");
+        printf("===========================================\n");
         // jogador 1 (server) ataca primeiro
         realizar_ataque(cliente_socket); // envia ataque
         mostrar_tabuleiros();
 
         if (verificar_vitoria()) {
-            printf("\n🎉 Todos os navios inimigos foram afundados! Você venceu!\n");
+            printf("\n\n===========================================\n");
+            printf("=====           FIM DE JOGO           =====\n");
+            printf("===========================================\n");
+            printf("\n🎉 Todos os navios inimigos foram afundados! Voce venceu!\n");
             send(cliente_socket, "VITORIA", 7, 0);
             break;
         }
 
+        printf("\n\n===========================================\n");
+        printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
+        printf("===========================================\n");
         // jogador 1 recebe ataque do jogador 2 (cliente)
         receber_ataque(cliente_socket);
         mostrar_tabuleiros();
 
         if (verificar_derrota()) {
-            printf("\n💥 Todos os seus navios foram afundados! Você perdeu!\n");
+            printf("\n\n===========================================\n");
+            printf("=====           FIM DE JOGO           =====\n");
+            printf("===========================================\n");
+            printf("\n💥 Todos os seus navios foram afundados! Voce perdeu!\n");
             send(cliente_socket, "DERROTA", 7, 0);
             break;
         }
@@ -139,6 +151,9 @@ int main() {
             if(bytes > 0) {
                 mensagem[bytes] = '\0';
                 if(strstr(mensagem, "DERROTA")) { // se recebeu algo e o texto contem DERROTA
+                    printf("\n\n===========================================\n");
+                    printf("=====           FIM DE JOGO           =====\n");
+                    printf("===========================================\n");
                     printf("\n🏆 O inimigo foi derrotado! Você venceu!\n");
                     break;
                 }
@@ -154,7 +169,10 @@ int main() {
 }
 
 void tela_inicial() {
-    printf("\nBEM VINDO AO BATALHA NAVAL\n--------------------------\nBarcos disponiveis: \n");
+    printf("\n\n====     BEM VINDO AO BATALHA NAVAL     ====\n");
+    printf("============================================\n");
+    printf("====         BARCOS DISPONIVEIS:        ====\n");
+    
     printf("1. Porta-avioes (P)  (5 blocos)   #####\n");
     printf("2. Encouracado (E)   (4 blocos)   ####\n");
     printf("3. Submarino (S)     (3 blocos)   ###\n");
@@ -164,7 +182,7 @@ void tela_inicial() {
     printf("- Cada jogador tem um tabuleiro proprio e outro com os acertos/erros do inimigo\n");
     printf("- Posicione seus navios escolhendo a posicao inicial (linha/coluna) e a orientacao (H ou V)\n");
     printf("- Escolha posicoes para atacar o adversario e tente afundar todos os navios\n");
-    printf("- 'X' = acerto, 'O' = tiro na água\n");
+    printf("- 'X' = acerto, 'O' = tiro na agua\n");
     printf("- Vence quem afundar todos os navios inimigos primeiro\n");
 
     printf("\nPressione Enter para continuar...\n");
@@ -292,7 +310,9 @@ void posicionar_barcos() {
             valido = 1;
         }
     }
-    printf("\nTodos os navios foram posicionados!");
+    printf("\n\n===========================================\n");
+    printf("=====  TODOS OS NAVIOS POSICIONADOS   =====\n");
+    printf("===========================================\n");
     printf("\nPressione Enter para continuar o jogo...");
     esperar_enter();
     printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)

@@ -1,0 +1,6 @@
+1. verificar se ambos jogadores ja posicionaram antes de começar as jogadas
+2. esperar 'enter' depois de posicionar nao funciona direito
+3. limpar a tela nao funciona sempre 
+4. fazer os emojis funcionarem
+6. aviso de qual barco foi afundado durante o jogo
+7. nao permitir digitar enquanto nao for sua vez
