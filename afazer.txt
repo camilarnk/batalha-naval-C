@@ -1,6 +1,6 @@
-1. verificar se ambos jogadores ja posicionaram antes de começar as jogadas
+1. verificar se ambos jogadores ja posicionaram antes de começar as jogadas(feito)
 
-2. esperar 'enter' depois de posicionar nao funciona direito
+2. esperar 'enter' depois de posicionar nao funciona direito (feito)
 
 3. limpar a tela nao funciona sempre 
 
