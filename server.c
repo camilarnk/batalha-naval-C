@@ -27,29 +27,25 @@ void receber_ataque(SOCKET sock);  // recebe ataque do cliente
 int verificar_derrota();
 int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
-char *obter_nome_navio(char simbolo);        // retorna o nome do navio baseado no simbolo
+char *obter_nome_navio(char simbolo); // retorna o nome do navio baseado no simbolo
 
-void esperar_enter()
-{
+void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
     char buf[32];
     fgets(buf, sizeof(buf), stdin); // lê até o enter (ou fim da linha)
 }
 
-int main()
-{
+int main() {
     SetConsoleOutputCP(CP_UTF8);
 
     // ==== INICIALIZAÇÃO DO WINSOCK ====
     WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-    {
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         printf("Falha ao inicializar Winsock. Erro: %d\n", WSAGetLastError());
         return 1;
     }
 
-    while (1)
-    {
+    while (1) {
         int opcao;
 
         printf("\n=====================================\n");
@@ -60,14 +56,12 @@ int main()
         scanf("%d", &opcao);
         getchar(); // consome o ENTER
 
-        if (opcao == 2)
-        {
+        if (opcao == 2) {
             printf("\nEncerrando o programa...\n");
             break;
         }
 
-        if (opcao != 1)
-        {
+        if (opcao != 1) {
             printf("\nOpcao invalida.\n");
             continue;
         }
@@ -80,8 +74,7 @@ int main()
         int tamanho_cliente = sizeof(cliente);
 
         sock_principal = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock_principal == INVALID_SOCKET)
-        {
+        if (sock_principal == INVALID_SOCKET) {
             printf("Erro ao criar socket: %d\n", WSAGetLastError());
             WSACleanup();
             return 1;
@@ -96,8 +89,7 @@ int main()
         printf("\nAguardando conexao do jogador 2...\n");
 
         sock_conexao = accept(sock_principal, (struct sockaddr *)&cliente, &tamanho_cliente);
-        if (sock_conexao == INVALID_SOCKET)
-        {
+        if (sock_conexao == INVALID_SOCKET) {
             printf("Erro ao aceitar conexao: %d\n", WSAGetLastError());
             closesocket(sock_principal);
             continue;
@@ -114,25 +106,21 @@ int main()
         send(sock_conexao, "PRONTO", 6, 0);
         char buf_sync[16];
         int bytes = recv(sock_conexao, buf_sync, sizeof(buf_sync) - 1, 0);
-        if (bytes > 0)
-        {
+        if (bytes > 0) {
             buf_sync[bytes] = '\0';
-            if (strcmp(buf_sync, "PRONTO") == 0)
-            {
+            if (strcmp(buf_sync, "PRONTO") == 0) {
                 printf("\n✅ Ambos os jogadores estao prontos. Iniciando partida!\n");
             }
         }
 
-        while (1)
-        {
+        while (1) {
             printf("\n\n===========================================\n");
             printf("=====        SUA VEZ DE ATACAR         =====\n");
             printf("===========================================\n");
             realizar_ataque(sock_conexao);
             mostrar_tabuleiros();
 
-            if (verificar_vitoria())
-            {
+            if (verificar_vitoria()) {
                 printf("\n🎉 Voce venceu!\n");
                 send(sock_conexao, "VITORIA", 7, 0);
                 break;
@@ -144,8 +132,7 @@ int main()
             receber_ataque(sock_conexao);
             mostrar_tabuleiros();
 
-            if (verificar_derrota())
-            {
+            if (verificar_derrota()) {
                 printf("\n💥 Voce perdeu!\n");
                 send(sock_conexao, "DERROTA", 7, 0);
                 break;
@@ -160,14 +147,11 @@ int main()
             timeout.tv_usec = 0;
 
             int activity = select(0, &fds, NULL, NULL, &timeout);
-            if (activity > 0)
-            {
+            if (activity > 0) {
                 int bytes = recv(sock_conexao, mensagem, sizeof(mensagem) - 1, 0);
-                if (bytes > 0)
-                {
+                if (bytes > 0) {
                     mensagem[bytes] = '\0';
-                    if (strstr(mensagem, "DERROTA"))
-                    {
+                    if (strstr(mensagem, "DERROTA")) {
                         printf("\n🏆 O inimigo foi derrotado!\n");
                         break;
                     }
@@ -185,8 +169,7 @@ int main()
     return 0;
 }
 
-void tela_inicial()
-{
+void tela_inicial() {
     printf("\n\n====     BEM VINDO AO BATALHA NAVAL     ====\n");
     printf("============================================\n");
     printf("====         BARCOS DISPONIVEIS:        ====\n");
@@ -208,85 +191,69 @@ void tela_inicial()
     esperar_enter();
 }
 
-void inicializar_tabuleiros()
-{
+void inicializar_tabuleiros() {
     // inicializando os tabuleiros com ~ representando a agua
-    for (int i = 0; i < TAM; i++)
-    {
-        for (int j = 0; j < TAM; j++)
-        {
+    for (int i = 0; i < TAM; i++) {
+        for (int j = 0; j < TAM; j++) {
             meu_tabuleiro[i][j] = '~';
             tabuleiro_inimigo[i][j] = '~';
         }
     }
 }
 
-void mostrar_tabuleiros()
-{
+void mostrar_tabuleiros() {
 
     printf("\nMeu tabuleiro:\n   ");
-    for (int j = 0; j < TAM; j++)
-    {
+    for (int j = 0; j < TAM; j++) {
         printf("%d ", j); // imprimindo o numero das colunas
     }
     printf("\n");
 
-    for (int i = 0; i < TAM; i++)
-    {
+    for (int i = 0; i < TAM; i++) {
         printf("%d  ", i); // imprimindo o numero das linhas
 
-        for (int j = 0; j < TAM; j++)
-        {
+        for (int j = 0; j < TAM; j++) {
             printf("%c ", meu_tabuleiro[i][j]); // imprimindo cada posicao do tabuleiro
         }
         printf("\n");
     }
 
     printf("\nTabuleiro do Inimigo:\n   ");
-    for (int j = 0; j < TAM; j++)
-    {
+    for (int j = 0; j < TAM; j++) {
         printf("%d ", j); // imprimindo o numero das colunas
     }
     printf("\n");
 
-    for (int i = 0; i < TAM; i++)
-    {
+    for (int i = 0; i < TAM; i++) {
         printf("%d  ", i); // imprimindo o numero das linhas
 
-        for (int j = 0; j < TAM; j++)
-        {
+        for (int j = 0; j < TAM; j++) {
             printf("%c ", tabuleiro_inimigo[i][j]); // imprimindo cada posicao do tabuleiro do inimigo
         }
         printf("\n");
     }
 }
 
-void mostrar_tabuleiro_posicionando()
-{
+void mostrar_tabuleiro_posicionando() {
     // função para imprimir apenas o meu tabuleiro enquanto usuario ainda posiciona os barcos
     printf("\n   ");
-    for (int j = 0; j < TAM; j++)
-    {
+    for (int j = 0; j < TAM; j++) {
         printf("%d ", j); // imprimindo o numero das colunas
     }
     printf("\n");
 
-    for (int i = 0; i < TAM; i++)
-    {
+    for (int i = 0; i < TAM; i++) {
         printf("%d  ", i); // imprimindo o numero das linhas
 
-        for (int j = 0; j < TAM; j++)
-        {
+        for (int j = 0; j < TAM; j++) {
             printf("%c ", meu_tabuleiro[i][j]); // imprimindo cada posicao do tabuleiro
         }
         printf("\n");
     }
 }
 
-void posicionar_barcos()
-{
-    struct
-    { // definindo os tipos de barcos
+void posicionar_barcos() {
+    struct { // definindo os tipos de barcos
         char *nome;
         int tamanho;
         char simbolo;
@@ -297,14 +264,12 @@ void posicionar_barcos()
         {"Destroyer", 2, 'D'}};
 
     mostrar_tabuleiro_posicionando(); // mostrando o tabuleiro para ajudar o usuario a posicionar
-    for (int barco = 0; barco < 4; barco++)
-    { // loop para posicionar os 4 barcos
+    for (int barco = 0; barco < 4; barco++) { // loop para posicionar os 4 barcos
         int linha, col;
         char orientacao;
         int valido = 0;
 
-        while (!valido)
-        { // enquanto a posiçao escolhida for invalida
+        while (!valido) { // enquanto a posiçao escolhida for invalida
             printf("\nPosicione o navio %s (tamanho %d)\n", barcos[barco].nome, barcos[barco].tamanho);
             printf("Linha (0-%d): ", TAM - 1);
             scanf("%d", &linha);
@@ -357,8 +322,7 @@ void posicionar_barcos()
     printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)
 }
 
-void realizar_ataque(SOCKET sock)
-{
+void realizar_ataque(SOCKET sock) {
     int linha, col;
     char mensagem[32], resposta[16];
     char msg_afundado[32];
@@ -375,13 +339,11 @@ void realizar_ataque(SOCKET sock)
 
     // recebe resposta "HIT" se acertou ou "MISS" se errou
     int bytes = recv(sock, resposta, sizeof(resposta) - 1, 0);
-    if (bytes > 0)
-    {
+    if (bytes > 0) {
         resposta[bytes] = '\0';
     }
 
-    if (strcmp(resposta, "HIT") == 0)
-    {
+    if (strcmp(resposta, "HIT") == 0) {
         printf("\n💥 Acertou um navio inimigo!\n");
         tabuleiro_inimigo[linha][col] = 'X';
 
@@ -394,55 +356,53 @@ void realizar_ataque(SOCKET sock)
         timeout.tv_usec = 100000; // 100ms para receber mensagem de afundado
 
         int activity = select(0, &fds, NULL, NULL, &timeout);
-        if (activity > 0)
-        {
+
+        if (activity > 0) {
             bytes = recv(sock, msg_afundado, sizeof(msg_afundado) - 1, 0);
-            if (bytes > 0)
-            {
+
+            if (bytes > 0) {
                 msg_afundado[bytes] = '\0';
-                if (strstr(msg_afundado, "AFUNDADO:") != NULL)
-                {
+
+                if (strstr(msg_afundado, "AFUNDADO:") != NULL) {
                     char simbolo = msg_afundado[9]; // "AFUNDADO:X" -> posição 9
                     char *nome_navio = obter_nome_navio(simbolo);
                     printf("\n🎯 VOCE AFUNDOU O %s INIMIGO!\n", nome_navio);
                 }
             }
         }
-    }
-    else
-    {
+    } else {
         printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
         tabuleiro_inimigo[linha][col] = 'O';
     }
 }
 
-void receber_ataque(SOCKET sock)
-{
+void receber_ataque(SOCKET sock) {
     int linha, col;
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
     printf("\nAguardando ataque do inimigo...\n");
     int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
-    if (bytes > 0)
-    {
+    
+    if (bytes > 0) {
         mensagem[bytes] = '\0';
     }
     sscanf(mensagem, "%d,%d", &linha, &col); // atribuindo o ataque do inimigo para a linha e coluna
 
     // verificando se o ataque atingiu alguma posicao
-    if (meu_tabuleiro[linha][col] != '~' && meu_tabuleiro[linha][col] != 'X' && meu_tabuleiro[linha][col] != 'O')
+    if (meu_tabuleiro[linha][col] != '~' &&
+        meu_tabuleiro[linha][col] != 'X' &&
+        meu_tabuleiro[linha][col] != 'O') 
     {
         printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
         simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
     }
-    else
-    {
+    else {
         printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
-        if (meu_tabuleiro[linha][col] == '~')
-        {
+
+        if (meu_tabuleiro[linha][col] == '~') {
             meu_tabuleiro[linha][col] = 'O';
         }
         strcpy(resposta, "MISS");
@@ -452,7 +412,9 @@ void receber_ataque(SOCKET sock)
     send(sock, resposta, strlen(resposta), 0);
 
     // se foi HIT, verifica se o navio foi completamente afundado
-    if (strcmp(resposta, "HIT") == 0 && simbolo_navio != '\0' && verificar_navio_afundado(simbolo_navio))
+    if (strcmp(resposta, "HIT") == 0 &&
+        simbolo_navio != '\0' &&
+        verificar_navio_afundado(simbolo_navio))
     {
         char msg_afundado[32];
         sprintf(msg_afundado, "AFUNDADO:%c", simbolo_navio);
@@ -462,15 +424,14 @@ void receber_ataque(SOCKET sock)
     }
 }
 
-int verificar_derrota()
-{
+int verificar_derrota() {
     // verifica se ainda há algum navio no tabuleiro do jogador
-    for (int i = 0; i < TAM; i++)
-    {
-        for (int j = 0; j < TAM; j++)
-        {
-            if (meu_tabuleiro[i][j] == 'P' || meu_tabuleiro[i][j] == 'E' ||
-                meu_tabuleiro[i][j] == 'S' || meu_tabuleiro[i][j] == 'D')
+    for (int i = 0; i < TAM; i++) {
+        for (int j = 0; j < TAM; j++) {
+            if (meu_tabuleiro[i][j] == 'P' ||
+                meu_tabuleiro[i][j] == 'E' ||
+                meu_tabuleiro[i][j] == 'S' ||
+                meu_tabuleiro[i][j] == 'D')
             {
                 return 0; // ainda tem navios
             }
@@ -479,14 +440,11 @@ int verificar_derrota()
     return 1; // todos navios foram afundados
 }
 
-int verificar_vitoria()
-{
+int verificar_vitoria() {
     // verifica se o jogador afundou todos os navios do inimigo
     int acertos = 0;
-    for (int i = 0; i < TAM; i++)
-    {
-        for (int j = 0; j < TAM; j++)
-        {
+    for (int i = 0; i < TAM; i++) {
+        for (int j = 0; j < TAM; j++) {
             if (tabuleiro_inimigo[i][j] == 'X')
                 acertos++;
         }
@@ -494,15 +452,11 @@ int verificar_vitoria()
     return acertos >= TOTAL_BLOCOS; // total atual de blocos de navios inimigos
 }
 
-char verificar_navio_afundado(char simbolo)
-{
+char verificar_navio_afundado(char simbolo) {
     // verifica se todas as casas de um navio específico foram acertadas
-    for (int i = 0; i < TAM; i++)
-    {
-        for (int j = 0; j < TAM; j++)
-        {
-            if (meu_tabuleiro[i][j] == simbolo)
-            {
+    for (int i = 0; i < TAM; i++) {
+        for (int j = 0; j < TAM; j++) {
+            if (meu_tabuleiro[i][j] == simbolo) {
                 return 0; // ainda há casas não acertadas deste navio
             }
         }
@@ -510,11 +464,9 @@ char verificar_navio_afundado(char simbolo)
     return 1; // todas as casas deste navio foram acertadas (navio afundado)
 }
 
-char *obter_nome_navio(char simbolo)
-{
+char *obter_nome_navio(char simbolo) {
     // retorna o nome do navio baseado no simbolo
-    switch (simbolo)
-    {
+    switch (simbolo) {
     case 'P':
         return "PORTA-AVIOES";
     case 'E':
