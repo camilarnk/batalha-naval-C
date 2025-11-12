@@ -125,7 +125,9 @@ int main()
 
         while (1)
         {
-            printf("\n===== SUA VEZ DE ATACAR =====\n");
+            printf("\n\n===========================================\n");
+            printf("=====        SUA VEZ DE ATACAR         =====\n");
+            printf("===========================================\n");
             realizar_ataque(sock_conexao);
             mostrar_tabuleiros();
 
@@ -136,7 +138,9 @@ int main()
                 break;
             }
 
-            printf("\n===== AGUARDANDO ATAQUE DO INIMIGO =====\n");
+            printf("\n\n===========================================\n");
+            printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
+            printf("===========================================\n");
             receber_ataque(sock_conexao);
             mostrar_tabuleiros();
 
