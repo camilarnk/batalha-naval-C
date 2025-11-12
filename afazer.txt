@@ -1,0 +1,18 @@
+✅ 1. verificar se ambos jogadores ja posicionaram antes de começar as jogadas (feito) ✅
+
+✅ 2. esperar 'enter' depois de posicionar nao funciona direito (feito) ✅
+
+🛑 3. limpar a tela nao funciona sempre 
+
+✅ 4. fazer os emojis funcionarem (feito) ✅
+
+✅ 6. aviso de qual barco foi afundado durante o jogo (feito) ✅
+
+🛑 7. nao permitir digitar enquanto nao for sua vez
+
+🛑 8. nao permitir o usuario digitar algo diferente de um numero
+(salvar em var temp, verificar, e se nao for um numero 0-9, mandar digitar novamente,
+tanta na funçao de posicionar_barcos() quanto ao longo das jogadas)
+
+✅ 9. fazer o jogo em si estar em um loop (digite 1 para jogar, 2 para sair)
+para poder jogar varias vezes sem ter que executar sempre (feito) ✅
