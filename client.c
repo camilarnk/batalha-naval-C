@@ -17,6 +17,7 @@
 
 char meu_tabuleiro[TAM][TAM];
 char tabuleiro_inimigo[TAM][TAM];
+int pode_digitar = 1; // o usuário pode digitar algo no console
 
 void tela_inicial();
 void inicializar_tabuleiros();
@@ -25,6 +26,8 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque ao servidor
 void receber_ataque(SOCKET sock);  // recebe ataque do servidor
+void bloquear_entrada_usuario();
+void liberar_entrada_usuario(); 
 int verificar_derrota();
 int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
@@ -370,9 +373,12 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
+    // 👉 AQUI: enquanto estou esperando o inimigo jogar, NÃO é a minha vez
+    bloquear_entrada_usuario();
+
     printf("\nAguardando ataque do inimigo...\n");
     int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
-
+    
     if (bytes > 0) {
         mensagem[bytes] = '\0';
     }
@@ -381,18 +387,17 @@ void receber_ataque(SOCKET sock) {
     // verificando se o ataque atingiu alguma posicao
     if (meu_tabuleiro[linha][col] != '~' &&
         meu_tabuleiro[linha][col] != 'X' &&
-        meu_tabuleiro[linha][col] != 'O')
+        meu_tabuleiro[linha][col] != 'O') 
     {
         printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
         simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
     }
-    else
-    {
+    else {
         printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
-        if (meu_tabuleiro[linha][col] == '~')
-        {
+
+        if (meu_tabuleiro[linha][col] == '~') {
             meu_tabuleiro[linha][col] = 'O';
         }
         strcpy(resposta, "MISS");
@@ -412,6 +417,25 @@ void receber_ataque(SOCKET sock) {
         char *nome_navio = obter_nome_navio(simbolo_navio);
         printf("\n💀 SEU %s FOI AFUNDADO PELO INIMIGO!\n", nome_navio);
     }
+
+    // 👉 AQUI: terminou o turno do inimigo, agora volta a ser a minha vez
+    liberar_entrada_usuario();
+}
+
+void bloquear_entrada_usuario() {
+    pode_digitar = 0;
+}
+
+void liberar_entrada_usuario() {
+    int ch;
+
+    // Descarta qualquer coisa que o jogador possa ter digitado "fora da vez"
+    // que ficou presa no buffer do teclado
+    while ((ch = getchar()) != '\n' && ch != EOF) {
+        // só limpando o buffer
+    }
+
+    pode_digitar = 1;
 }
 
 int verificar_derrota() {

@@ -16,6 +16,7 @@
 
 char meu_tabuleiro[TAM][TAM];
 char tabuleiro_inimigo[TAM][TAM];
+int pode_digitar = 1; // o usuário pode digitar algo no console
 
 void tela_inicial();
 void inicializar_tabuleiros();
@@ -24,6 +25,8 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque via socket
 void receber_ataque(SOCKET sock);  // recebe ataque do cliente
+void bloquear_entrada_usuario();
+void liberar_entrada_usuario(); 
 int verificar_derrota();
 int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
@@ -381,6 +384,9 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
+    // 👉 AQUI: enquanto estou esperando o inimigo jogar, NÃO é a minha vez
+    bloquear_entrada_usuario();
+
     printf("\nAguardando ataque do inimigo...\n");
     int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
     
@@ -422,6 +428,26 @@ void receber_ataque(SOCKET sock) {
         char *nome_navio = obter_nome_navio(simbolo_navio);
         printf("\n💀 SEU %s FOI AFUNDADO PELO INIMIGO!\n", nome_navio);
     }
+
+    // 👉 AQUI: terminou o turno do inimigo, agora volta a ser a minha vez
+    liberar_entrada_usuario();
+}
+
+
+void bloquear_entrada_usuario() {
+    pode_digitar = 0;
+}
+
+void liberar_entrada_usuario() {
+    int ch;
+
+    // Descarta qualquer coisa que o jogador possa ter digitado "fora da vez"
+    // que ficou presa no buffer do teclado
+    while ((ch = getchar()) != '\n' && ch != EOF) {
+        // só limpando o buffer
+    }
+
+    pode_digitar = 1;
 }
 
 int verificar_derrota() {
