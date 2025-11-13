@@ -17,6 +17,10 @@
 char meu_tabuleiro[TAM][TAM];
 char tabuleiro_inimigo[TAM][TAM];
 
+// 1 = jogador pode digitar (é a vez dele)
+// 0 = jogador NÃO deve digitar (vez do inimigo)
+int pode_digitar = 1;
+
 void tela_inicial();
 void inicializar_tabuleiros();
 void mostrar_tabuleiros();
@@ -24,10 +28,16 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque via socket
 void receber_ataque(SOCKET sock);  // recebe ataque do cliente
+void bloquear_entrada_usuario();
+void liberar_entrada_usuario();
+void limpar_tela();
+void aguardar_sua_vez();
 int verificar_derrota();
 int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
-char *obter_nome_navio(char simbolo); // retorna o nome do navio baseado no simbolo
+char *obter_nome_navio(char simbolo);        // retorna o nome do navio baseado no simbolo
+
+int ler_coordenada(const char *rotulo);      // <<< NOVA FUNÇÃO
 
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
@@ -67,7 +77,6 @@ int main() {
         }
 
         // ==== CONFIGURAÇÃO DE CONEXÃO (somente servidor) ====
-        // (para cliente, use o connect normalmente)
         WSADATA wsa2;
         SOCKET sock_principal, sock_conexao;
         struct sockaddr_in servidor, cliente;
@@ -113,6 +122,9 @@ int main() {
             }
         }
 
+        // começa como sendo a vez do servidor
+        pode_digitar = 1;
+
         while (1) {
             printf("\n\n===========================================\n");
             printf("=====        SUA VEZ DE ATACAR         =====\n");
@@ -148,9 +160,9 @@ int main() {
 
             int activity = select(0, &fds, NULL, NULL, &timeout);
             if (activity > 0) {
-                int bytes = recv(sock_conexao, mensagem, sizeof(mensagem) - 1, 0);
-                if (bytes > 0) {
-                    mensagem[bytes] = '\0';
+                int bytes2 = recv(sock_conexao, mensagem, sizeof(mensagem) - 1, 0);
+                if (bytes2 > 0) {
+                    mensagem[bytes2] = '\0';
                     if (strstr(mensagem, "DERROTA")) {
                         printf("\n🏆 O inimigo foi derrotado!\n");
                         break;
@@ -189,6 +201,7 @@ void tela_inicial() {
     printf("\nPressione Enter para continuar...\n");
     fflush(stdout);
     esperar_enter();
+    limpar_tela();
 }
 
 void inicializar_tabuleiros() {
@@ -252,6 +265,32 @@ void mostrar_tabuleiro_posicionando() {
     }
 }
 
+// Lê coordenada como string, valida se é dígito único 0–9 e está dentro do tabuleiro
+int ler_coordenada(const char *rotulo) {
+    char temp[16];
+    int valor;
+
+    while (1) {
+        printf("%s (0-%d): ", rotulo, TAM - 1);
+
+        if (scanf("%15s", temp) != 1) {
+            printf("Entrada invalida. Tente novamente.\n");
+            continue;
+        }
+
+        // precisa ser exatamente 1 caractere e dígito
+        if (strlen(temp) == 1 && isdigit((unsigned char)temp[0])) {
+            valor = temp[0] - '0';
+
+            if (valor >= 0 && valor < TAM) {
+                return valor;
+            }
+        }
+
+        printf("Digite apenas um numero de 0 a %d.\n", TAM - 1);
+    }
+}
+
 void posicionar_barcos() {
     struct { // definindo os tipos de barcos
         char *nome;
@@ -271,42 +310,39 @@ void posicionar_barcos() {
 
         while (!valido) { // enquanto a posiçao escolhida for invalida
             printf("\nPosicione o navio %s (tamanho %d)\n", barcos[barco].nome, barcos[barco].tamanho);
-            printf("Linha (0-%d): ", TAM - 1);
-            scanf("%d", &linha);
-            printf("Coluna (0-%d): ", TAM - 1);
-            scanf("%d", &col);
+
+            // >>> validação: só aceita 0–9
+            linha = ler_coordenada("Linha");
+            col   = ler_coordenada("Coluna");
+
             printf("Orientacao (H/V): ");
             scanf(" %c", &orientacao);
-            orientacao = toupper(orientacao);
+            orientacao = toupper((unsigned char)orientacao);
 
             // verificando limites do tabuleiro
             if ((orientacao == 'H' && col + barcos[barco].tamanho > TAM) ||
-                (orientacao == 'V' && linha + barcos[barco].tamanho > TAM))
-            {
+                (orientacao == 'V' && linha + barcos[barco].tamanho > TAM)) {
                 printf("\n%s nao cabe na posicao escolhida. Tente novamente\n", barcos[barco].nome);
                 continue;
             }
 
-            // verificando se nao ha barcos se soprepondo
+            // verificando se nao ha barcos se sobrepondo
             int sobreposicao = 0;
-            for (int i = 0; i < barcos[barco].tamanho; i++)
-            {
+            for (int i = 0; i < barcos[barco].tamanho; i++) {
                 int x = linha + (orientacao == 'V' ? i : 0); // se for vertical, linha + i. se nao for, linha + 0
-                int y = col + (orientacao == 'H' ? i : 0);   // se for horizontal, linha + i. se nao for, linha + 0
+                int y = col + (orientacao == 'H' ? i : 0);   // se for horizontal, col + i. se nao for, col + 0
                 if (meu_tabuleiro[x][y] != '~')
                     sobreposicao = 1; // se nao tiver agua na posicao escolhida, ela esta invalida
             }
-            if (sobreposicao)
-            {
+            if (sobreposicao) {
                 printf("Ha outro navio nessa posicao. Tente novamente\n");
                 continue;
             }
 
             // posicionando o barco
-            for (int i = 0; i < barcos[barco].tamanho; i++)
-            {
-                int x = linha + (orientacao == 'V' ? i : 0); // se for vertical, linha + i. se nao for, linha + 0
-                int y = col + (orientacao == 'H' ? i : 0);   // se for horizontal, linha + i. se nao for, linha + 0
+            for (int i = 0; i < barcos[barco].tamanho; i++) {
+                int x = linha + (orientacao == 'V' ? i : 0);
+                int y = col + (orientacao == 'H' ? i : 0);
                 meu_tabuleiro[x][y] = barcos[barco].simbolo;
             }
             mostrar_tabuleiro_posicionando(); // mostrando como ficou o tabuleiro depois de posicionar cada barco
@@ -319,7 +355,14 @@ void posicionar_barcos() {
     printf("===========================================\n");
     printf("\nPressione Enter para continuar o jogo...");
     esperar_enter();
-    printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)
+    limpar_tela(); // limpar o terminal
+}
+
+// Espera até ser "sua vez", se por algum motivo for chamada fora de hora
+void aguardar_sua_vez() {
+    while (!pode_digitar) {
+        Sleep(10); // evita ocupar 100% da CPU
+    }
 }
 
 void realizar_ataque(SOCKET sock) {
@@ -327,11 +370,14 @@ void realizar_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char msg_afundado[32];
 
+    // garante que só ataca quando for a vez do jogador
+    aguardar_sua_vez();
+
     printf("\nSua vez! Escolha onde atirar:\n");
-    printf("Linha (0-%d): ", TAM - 1);
-    scanf("%d", &linha);
-    printf("Coluna (0-%d): ", TAM - 1);
-    scanf("%d", &col);
+
+    // >>> validação: só aceita 0–9
+    linha = ler_coordenada("Linha");
+    col   = ler_coordenada("Coluna");
 
     // envia ataque para o cliente "linha,coluna"
     sprintf(mensagem, "%d,%d", linha, col);
@@ -344,6 +390,7 @@ void realizar_ataque(SOCKET sock) {
     }
 
     if (strcmp(resposta, "HIT") == 0) {
+        limpar_tela();
         printf("\n💥 Acertou um navio inimigo!\n");
         tabuleiro_inimigo[linha][col] = 'X';
 
@@ -371,6 +418,7 @@ void realizar_ataque(SOCKET sock) {
             }
         }
     } else {
+        limpar_tela();
         printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
         tabuleiro_inimigo[linha][col] = 'O';
     }
@@ -381,9 +429,12 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
+    // Enquanto estou esperando o inimigo jogar, NÃO é a minha vez
+    bloquear_entrada_usuario();
+
     printf("\nAguardando ataque do inimigo...\n");
     int bytes = recv(sock, mensagem, sizeof(mensagem) - 1, 0);
-    
+
     if (bytes > 0) {
         mensagem[bytes] = '\0';
     }
@@ -392,14 +443,14 @@ void receber_ataque(SOCKET sock) {
     // verificando se o ataque atingiu alguma posicao
     if (meu_tabuleiro[linha][col] != '~' &&
         meu_tabuleiro[linha][col] != 'X' &&
-        meu_tabuleiro[linha][col] != 'O') 
-    {
+        meu_tabuleiro[linha][col] != 'O') {
+        limpar_tela();
         printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
         simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
-    }
-    else {
+    } else {
+        limpar_tela();
         printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
 
         if (meu_tabuleiro[linha][col] == '~') {
@@ -414,14 +465,35 @@ void receber_ataque(SOCKET sock) {
     // se foi HIT, verifica se o navio foi completamente afundado
     if (strcmp(resposta, "HIT") == 0 &&
         simbolo_navio != '\0' &&
-        verificar_navio_afundado(simbolo_navio))
-    {
+        verificar_navio_afundado(simbolo_navio)) {
         char msg_afundado[32];
         sprintf(msg_afundado, "AFUNDADO:%c", simbolo_navio);
         send(sock, msg_afundado, strlen(msg_afundado), 0);
         char *nome_navio = obter_nome_navio(simbolo_navio);
         printf("\n💀 SEU %s FOI AFUNDADO PELO INIMIGO!\n", nome_navio);
     }
+
+    // terminou o turno do inimigo, agora volta a ser a minha vez
+    liberar_entrada_usuario();
+}
+
+void bloquear_entrada_usuario() {
+    pode_digitar = 0;
+}
+
+void liberar_entrada_usuario() {
+    // Descarta qualquer coisa que o jogador possa ter digitado "fora da vez"
+    // sem bloquear caso ele não tenha digitado nada
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    if (hIn != INVALID_HANDLE_VALUE) {
+        FlushConsoleInputBuffer(hIn);
+    }
+
+    pode_digitar = 1;
+}
+
+void limpar_tela() {
+    printf("\033[2J\033[H");
 }
 
 int verificar_derrota() {
@@ -431,8 +503,7 @@ int verificar_derrota() {
             if (meu_tabuleiro[i][j] == 'P' ||
                 meu_tabuleiro[i][j] == 'E' ||
                 meu_tabuleiro[i][j] == 'S' ||
-                meu_tabuleiro[i][j] == 'D')
-            {
+                meu_tabuleiro[i][j] == 'D') {
                 return 0; // ainda tem navios
             }
         }
