@@ -39,6 +39,9 @@ void bloquear_entrada_usuario();
 void liberar_entrada_usuario();
 void aguardar_sua_vez();
 
+// 🔹 NOVA FUNÇÃO: lê coordenada garantindo número de 0 a 9
+int ler_coordenada(const char *rotulo);
+
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
     char buf[32];
@@ -273,15 +276,16 @@ void posicionar_barcos() {
 
         while (!valido) { // enquanto a posiçao escolhida for invalida
             printf("\nPosicione o navio %s (tamanho %d)\n", barcos[barco].nome, barcos[barco].tamanho);
-            printf("Linha (0-%d): ", TAM - 1);
-            scanf("%d", &linha);
-            printf("Coluna (0-%d): ", TAM - 1);
-            scanf("%d", &col);
+
+            // 🔹 usando validação 0–9 para linha e coluna
+            linha = ler_coordenada("Linha");
+            col   = ler_coordenada("Coluna");
+
             printf("Orientacao (H/V): ");
             scanf(" %c", &orientacao);
             orientacao = toupper(orientacao);
 
-            // verificando limites do tabuleiro
+            // verificando limites do tabuleiro (ainda faz sentido por causa do tamanho do navio)
             if ((orientacao == 'H' && col + barcos[barco].tamanho > TAM) ||
                 (orientacao == 'V' && linha + barcos[barco].tamanho > TAM)) {
                 printf("\n%s nao cabe na posicao escolhida. Tente novamente\n", barcos[barco].nome);
@@ -336,10 +340,10 @@ void realizar_ataque(SOCKET sock) {
     aguardar_sua_vez();
 
     printf("\nSua vez! Escolha onde atirar:\n");
-    printf("Linha (0-%d): ", TAM - 1);
-    scanf("%d", &linha);
-    printf("Coluna (0-%d): ", TAM - 1);
-    scanf("%d", &col);
+
+    // 🔹 usando validação 0–9 aqui também
+    linha = ler_coordenada("Linha");
+    col   = ler_coordenada("Coluna");
 
     // envia ataque para o server
     sprintf(mensagem, "%d,%d", linha, col);
@@ -504,4 +508,37 @@ char *obter_nome_navio(char simbolo) {
     default:
         return "NAVIO";
     }
+}
+
+// ===============================
+// 🔹 Implementação da validação 0–9
+// ===============================
+int ler_coordenada(const char *rotulo) {
+    char temp[32];
+    int valor;
+    int valido = 0;
+
+    while (!valido) {
+        printf("%s (0-%d): ", rotulo, TAM - 1);
+        if (scanf("%31s", temp) != 1) {
+            // entrada falhou, limpa erro e tenta de novo
+            fflush(stdin);
+            printf("Entrada invalida. Digite apenas um numero de 0 a 9.\n");
+            continue;
+        }
+
+        // verifica se é exatamente 1 caractere numérico
+        if (strlen(temp) == 1 && isdigit((unsigned char)temp[0])) {
+            valor = temp[0] - '0';
+            if (valor >= 0 && valor < TAM) {
+                valido = 1;
+            } else {
+                printf("Valor fora do intervalo permitido (0-%d). Tente novamente.\n", TAM - 1);
+            }
+        } else {
+            printf("Entrada invalida. Digite apenas um numero de 0 a 9.\n");
+        }
+    }
+
+    return valor;
 }
