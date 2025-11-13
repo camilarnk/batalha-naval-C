@@ -8,7 +8,7 @@
 
 ✅ 6. aviso de qual barco foi afundado durante o jogo (feito) ✅
 
-🛑 7. nao permitir digitar enquanto nao for sua vez
+✅ 7. nao permitir digitar enquanto nao for sua vez (feito)
 
 🛑 8. nao permitir o usuario digitar algo diferente de um numero
 (salvar em var temp, verificar, e se nao for um numero 0-9, mandar digitar novamente,
