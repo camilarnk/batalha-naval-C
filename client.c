@@ -29,6 +29,7 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque ao servidor
 void receber_ataque(SOCKET sock);  // recebe ataque do servidor
+void limpar_tela();
 int verificar_derrota();
 int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
@@ -321,7 +322,7 @@ void posicionar_barcos() {
     printf("===========================================\n");
     printf("\nPressione Enter para continuar o jogo...");
     esperar_enter();
-    printf("\033[2J\033[H"); // limpar o terminal (funciona melhor em PowerShell e VSCode)
+    limpar_tela(); // limpar o terminal
 }
 
 // Espera até ser "sua vez", se por algum motivo for chamada fora de hora
@@ -356,6 +357,7 @@ void realizar_ataque(SOCKET sock) {
     }
 
     if (strcmp(resposta, "HIT") == 0) {
+        limpar_tela();
         printf("\n💥 Acertou um navio inimigo!\n");
         tabuleiro_inimigo[linha][col] = 'X';
 
@@ -383,6 +385,7 @@ void realizar_ataque(SOCKET sock) {
             }
         }
     } else {
+        limpar_tela();
         printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
         tabuleiro_inimigo[linha][col] = 'O';
     }
@@ -393,6 +396,7 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
+    limpar_tela();
     // enquanto estou esperando o inimigo jogar, NÃO é a minha vez
     bloquear_entrada_usuario();
 
@@ -408,12 +412,14 @@ void receber_ataque(SOCKET sock) {
     if (meu_tabuleiro[linha][col] != '~' &&
         meu_tabuleiro[linha][col] != 'X' &&
         meu_tabuleiro[linha][col] != 'O') {
+        limpar_tela();
         printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
         simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
     }
     else {
+        limpar_tela();
         printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
 
         if (meu_tabuleiro[linha][col] == '~') {
@@ -453,6 +459,10 @@ void liberar_entrada_usuario() {
     }
 
     pode_digitar = 1;
+}
+
+void limpar_tela() {
+    printf("\033[2J\033[H");
 }
 
 int verificar_derrota() {
