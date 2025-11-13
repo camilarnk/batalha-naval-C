@@ -195,6 +195,7 @@ void tela_inicial() {
     printf("\nPressione Enter para continuar...\n");
     fflush(stdout);
     esperar_enter();
+    limpar_tela();
 }
 
 void inicializar_tabuleiros() {
@@ -396,7 +397,6 @@ void receber_ataque(SOCKET sock) {
     char mensagem[32], resposta[16];
     char simbolo_navio = '\0'; // inicializa com valor padrão
 
-    limpar_tela();
     // enquanto estou esperando o inimigo jogar, NÃO é a minha vez
     bloquear_entrada_usuario();
 
