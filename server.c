@@ -36,6 +36,8 @@ int verificar_vitoria();
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
 char *obter_nome_navio(char simbolo);        // retorna o nome do navio baseado no simbolo
 
+int ler_coordenada(const char *rotulo);      // <<< NOVA FUNÇÃO
+
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
     char buf[32];
@@ -157,9 +159,9 @@ int main() {
 
             int activity = select(0, &fds, NULL, NULL, &timeout);
             if (activity > 0) {
-                int bytes = recv(sock_conexao, mensagem, sizeof(mensagem) - 1, 0);
-                if (bytes > 0) {
-                    mensagem[bytes] = '\0';
+                int bytes2 = recv(sock_conexao, mensagem, sizeof(mensagem) - 1, 0);
+                if (bytes2 > 0) {
+                    mensagem[bytes2] = '\0';
                     if (strstr(mensagem, "DERROTA")) {
                         printf("\n🏆 O inimigo foi derrotado!\n");
                         break;
@@ -261,6 +263,32 @@ void mostrar_tabuleiro_posicionando() {
     }
 }
 
+// Lê coordenada como string, valida se é dígito único 0–9 e está dentro do tabuleiro
+int ler_coordenada(const char *rotulo) {
+    char temp[16];
+    int valor;
+
+    while (1) {
+        printf("%s (0-%d): ", rotulo, TAM - 1);
+
+        if (scanf("%15s", temp) != 1) {
+            printf("Entrada invalida. Tente novamente.\n");
+            continue;
+        }
+
+        // precisa ser exatamente 1 caractere e dígito
+        if (strlen(temp) == 1 && isdigit((unsigned char)temp[0])) {
+            valor = temp[0] - '0';
+
+            if (valor >= 0 && valor < TAM) {
+                return valor;
+            }
+        }
+
+        printf("Digite apenas um numero de 0 a %d.\n", TAM - 1);
+    }
+}
+
 void posicionar_barcos() {
     struct { // definindo os tipos de barcos
         char *nome;
@@ -280,13 +308,14 @@ void posicionar_barcos() {
 
         while (!valido) { // enquanto a posiçao escolhida for invalida
             printf("\nPosicione o navio %s (tamanho %d)\n", barcos[barco].nome, barcos[barco].tamanho);
-            printf("Linha (0-%d): ", TAM - 1);
-            scanf("%d", &linha);
-            printf("Coluna (0-%d): ", TAM - 1);
-            scanf("%d", &col);
+
+            // >>> validação: só aceita 0–9
+            linha = ler_coordenada("Linha");
+            col   = ler_coordenada("Coluna");
+
             printf("Orientacao (H/V): ");
             scanf(" %c", &orientacao);
-            orientacao = toupper(orientacao);
+            orientacao = toupper((unsigned char)orientacao);
 
             // verificando limites do tabuleiro
             if ((orientacao == 'H' && col + barcos[barco].tamanho > TAM) ||
@@ -295,11 +324,11 @@ void posicionar_barcos() {
                 continue;
             }
 
-            // verificando se nao ha barcos se soprepondo
+            // verificando se nao ha barcos se sobrepondo
             int sobreposicao = 0;
             for (int i = 0; i < barcos[barco].tamanho; i++) {
                 int x = linha + (orientacao == 'V' ? i : 0); // se for vertical, linha + i. se nao for, linha + 0
-                int y = col + (orientacao == 'H' ? i : 0);   // se for horizontal, linha + i. se nao for, linha + 0
+                int y = col + (orientacao == 'H' ? i : 0);   // se for horizontal, col + i. se nao for, col + 0
                 if (meu_tabuleiro[x][y] != '~')
                     sobreposicao = 1; // se nao tiver agua na posicao escolhida, ela esta invalida
             }
@@ -343,10 +372,10 @@ void realizar_ataque(SOCKET sock) {
     aguardar_sua_vez();
 
     printf("\nSua vez! Escolha onde atirar:\n");
-    printf("Linha (0-%d): ", TAM - 1);
-    scanf("%d", &linha);
-    printf("Coluna (0-%d): ", TAM - 1);
-    scanf("%d", &col);
+
+    // >>> validação: só aceita 0–9
+    linha = ler_coordenada("Linha");
+    col   = ler_coordenada("Coluna");
 
     // envia ataque para o cliente "linha,coluna"
     sprintf(mensagem, "%d,%d", linha, col);
