@@ -127,7 +127,7 @@ int main() {
         pode_digitar = 0;
 
         while (1) {
-            printf("\n\n===========================================\n");
+            printf("===========================================\n");
             printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
             printf("===========================================\n");
         
@@ -140,8 +140,8 @@ int main() {
                 break;
             }
 
-            printf("\n\n===========================================\n");
-            printf("=====        SUA VEZ DE ATACAR         =====\n");
+            printf("===========================================\n");
+            printf("=====        SUA VEZ DE ATACAR        =====\n");
             printf("===========================================\n");
         
             mostrar_tabuleiros();
@@ -357,9 +357,9 @@ void realizar_ataque(SOCKET sock) {
 
     printf("\nSua vez! Escolha onde atirar:\n");
 
-    // 🔹 usando validação 0–9 aqui também
+    // validação 0–9 aqui também
     linha = ler_coordenada("Linha");
-    col   = ler_coordenada("Coluna");
+    col = ler_coordenada("Coluna");
 
     // envia ataque para o server
     sprintf(mensagem, "%d,%d", linha, col);
@@ -372,8 +372,8 @@ void realizar_ataque(SOCKET sock) {
     }
 
     if (strcmp(resposta, "HIT") == 0) {
-        limpar_tela();
-        printf("\n💥 Acertou um navio inimigo!\n");
+        printf("\n===========================================\n");
+        printf("💥        ACERTOU UM NAVIO INIMIGO!       💥\n");
         tabuleiro_inimigo[linha][col] = 'X';
 
         // verifica se há mensagem de navio afundado disponível
@@ -400,8 +400,8 @@ void realizar_ataque(SOCKET sock) {
             }
         }
     } else {
-        limpar_tela();
-        printf("\n🌊 Apenas agua! Nenhum navio atingido!\n");
+        printf("\n===========================================\n");
+        printf("🌊  APENAS AGUA! NENHUM NAVIO ATINGIDO!   🌊\n");
         tabuleiro_inimigo[linha][col] = 'O';
     }
 }
@@ -426,15 +426,16 @@ void receber_ataque(SOCKET sock) {
     if (meu_tabuleiro[linha][col] != '~' &&
         meu_tabuleiro[linha][col] != 'X' &&
         meu_tabuleiro[linha][col] != 'O') {
-        limpar_tela();
-        printf("💣 O inimigo acertou em (%d,%d)!\n", linha, col);
+        printf("\n===========================================\n");
+        printf("💣     O INIMIGO ACERTOU EM (%d,%d)!      💣\n", linha, col);
+
         simbolo_navio = meu_tabuleiro[linha][col]; // salva o simbolo antes de marcar como X
         meu_tabuleiro[linha][col] = 'X';
         strcpy(resposta, "HIT");
     }
     else {
-        limpar_tela();
-        printf("\n😌 O inimigo errou (%d,%d)!\n", linha, col);
+        printf("\n===========================================\n");
+        printf("💧        O INIMIGO ERROU (%d,%d)!         💧\n", linha, col);
 
         if (meu_tabuleiro[linha][col] == '~') {
             meu_tabuleiro[linha][col] = 'O';
