@@ -10,12 +10,12 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
-#define TAM 10
+#define TAM 10          // tamanho dos tabuleiros
 #define TOTAL_BLOCOS 14 // quantidade de blocos do tabuleiro que possuem navios
 #define PORTA 5000      // porta de comunicaçao, pode ser alterada
 
-char meu_tabuleiro[TAM][TAM];
-char tabuleiro_inimigo[TAM][TAM];
+char **meu_tabuleiro;
+char **tabuleiro_inimigo;
 
 // 1 = jogador pode digitar (é a vez dele)
 // 0 = jogador NÃO deve digitar (vez do inimigo)
@@ -28,16 +28,15 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque via socket
 void receber_ataque(SOCKET sock);  // recebe ataque do cliente
-void bloquear_entrada_usuario();
-void liberar_entrada_usuario();
+void bloquear_entrada_usuario(); // controle de entrada
+void liberar_entrada_usuario(); // controle de entrada
+void aguardar_sua_vez(); // controle de entrada
 void limpar_tela();
-void aguardar_sua_vez();
 int verificar_derrota();
 int verificar_vitoria();
+int ler_coordenada(const char *rotulo); // lê coordenada garantindo número de 0 a 9
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
 char *obter_nome_navio(char simbolo);        // retorna o nome do navio baseado no simbolo
-
-int ler_coordenada(const char *rotulo);      // <<< NOVA FUNÇÃO
 
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
@@ -47,6 +46,15 @@ void esperar_enter() {
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
+
+    // ==== ALOCANDO TABULEIROS DINAMICAMENTE ====
+    meu_tabuleiro = malloc(TAM * sizeof(char *));
+    tabuleiro_inimigo = malloc(TAM * sizeof(char *));
+
+    for (int i = 0; i < TAM; i++) {
+        meu_tabuleiro[i] = malloc(TAM * sizeof(char));
+        tabuleiro_inimigo[i] = malloc(TAM * sizeof(char));
+    }
 
     // ==== INICIALIZAÇÃO DO WINSOCK ====
     WSADATA wsa;
@@ -129,8 +137,9 @@ int main() {
             printf("\n\n===========================================\n");
             printf("=====        SUA VEZ DE ATACAR         =====\n");
             printf("===========================================\n");
-            realizar_ataque(sock_conexao);
+
             mostrar_tabuleiros();
+            realizar_ataque(sock_conexao);
 
             if (verificar_vitoria()) {
                 printf("\n🎉 Voce venceu!\n");
@@ -141,8 +150,9 @@ int main() {
             printf("\n\n===========================================\n");
             printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
             printf("===========================================\n");
-            receber_ataque(sock_conexao);
+
             mostrar_tabuleiros();
+            receber_ataque(sock_conexao);
 
             if (verificar_derrota()) {
                 printf("\n💥 Voce perdeu!\n");
@@ -176,6 +186,15 @@ int main() {
         closesocket(sock_principal);
         printf("\nPartida encerrada. Voltando ao menu principal...\n");
     }
+
+    // ==== LIBERAÇÃO DA MEMÓRIA ====
+    for (int i = 0; i < TAM; i++) {
+        free(meu_tabuleiro[i]);
+        free(tabuleiro_inimigo[i]);
+    }
+
+    free(meu_tabuleiro);
+    free(tabuleiro_inimigo);
 
     WSACleanup();
     return 0;
@@ -265,32 +284,6 @@ void mostrar_tabuleiro_posicionando() {
     }
 }
 
-// Lê coordenada como string, valida se é dígito único 0–9 e está dentro do tabuleiro
-int ler_coordenada(const char *rotulo) {
-    char temp[16];
-    int valor;
-
-    while (1) {
-        printf("%s (0-%d): ", rotulo, TAM - 1);
-
-        if (scanf("%15s", temp) != 1) {
-            printf("Entrada invalida. Tente novamente.\n");
-            continue;
-        }
-
-        // precisa ser exatamente 1 caractere e dígito
-        if (strlen(temp) == 1 && isdigit((unsigned char)temp[0])) {
-            valor = temp[0] - '0';
-
-            if (valor >= 0 && valor < TAM) {
-                return valor;
-            }
-        }
-
-        printf("Digite apenas um numero de 0 a %d.\n", TAM - 1);
-    }
-}
-
 void posicionar_barcos() {
     struct { // definindo os tipos de barcos
         char *nome;
@@ -358,8 +351,8 @@ void posicionar_barcos() {
     limpar_tela(); // limpar o terminal
 }
 
-// Espera até ser "sua vez", se por algum motivo for chamada fora de hora
 void aguardar_sua_vez() {
+    // Espera até ser "sua vez", se por algum motivo for chamada fora de hora
     while (!pode_digitar) {
         Sleep(10); // evita ocupar 100% da CPU
     }
@@ -521,6 +514,32 @@ int verificar_vitoria() {
         }
     }
     return acertos >= TOTAL_BLOCOS; // total atual de blocos de navios inimigos
+}
+
+int ler_coordenada(const char *rotulo) {
+    // Lê coordenada como string, valida se é dígito único 0–9 e está dentro do tabuleiro
+    char temp[16];
+    int valor;
+
+    while (1) {
+        printf("%s (0-%d): ", rotulo, TAM - 1);
+
+        if (scanf("%15s", temp) != 1) {
+            printf("Entrada invalida. Tente novamente.\n");
+            continue;
+        }
+
+        // precisa ser exatamente 1 caractere e dígito
+        if (strlen(temp) == 1 && isdigit((unsigned char)temp[0])) {
+            valor = temp[0] - '0';
+
+            if (valor >= 0 && valor < TAM) {
+                return valor;
+            }
+        }
+
+        printf("Digite apenas um numero de 0 a %d.\n", TAM - 1);
+    }
 }
 
 char verificar_navio_afundado(char simbolo) {

@@ -10,13 +10,13 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
-#define TAM 10
+#define TAM 10          // tamanho dos tabuleiros
 #define TOTAL_BLOCOS 14 // quantidade de blocos do tabuleiro que possuem navios
 #define PORTA 5000
 #define IP_SERVIDOR "127.0.0.1" // IP local do servidor (mesma máquina)
 
-char meu_tabuleiro[TAM][TAM];
-char tabuleiro_inimigo[TAM][TAM];
+char **meu_tabuleiro;
+char **tabuleiro_inimigo;
 
 // 1 = jogador pode digitar (é a vez dele)
 // 0 = jogador NÃO deve digitar (vez do inimigo)
@@ -29,19 +29,15 @@ void posicionar_barcos();
 void mostrar_tabuleiro_posicionando();
 void realizar_ataque(SOCKET sock); // envia ataque ao servidor
 void receber_ataque(SOCKET sock);  // recebe ataque do servidor
+void bloquear_entrada_usuario(); // controle de entrada
+void liberar_entrada_usuario(); // controle de entrada
+void aguardar_sua_vez();
 void limpar_tela();
 int verificar_derrota();
 int verificar_vitoria();
+int ler_coordenada(const char *rotulo); // lê coordenada garantindo número de 0 a 9
 char verificar_navio_afundado(char simbolo); // verifica se um navio foi completamente afundado
 char *obter_nome_navio(char simbolo);        // retorna o nome do navio baseado no simbolo
-
-// controle de entrada
-void bloquear_entrada_usuario();
-void liberar_entrada_usuario();
-void aguardar_sua_vez();
-
-// 🔹 NOVA FUNÇÃO: lê coordenada garantindo número de 0 a 9
-int ler_coordenada(const char *rotulo);
 
 void esperar_enter() {
     // espera o jogador apertar enter de forma segura, substitui getchar()
@@ -51,6 +47,15 @@ void esperar_enter() {
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
+
+    // ==== ALOCANDO TABULEIROS DINAMICAMENTE ====
+    meu_tabuleiro = malloc(TAM * sizeof(char *));
+    tabuleiro_inimigo = malloc(TAM * sizeof(char *));
+
+    for (int i = 0; i < TAM; i++) {
+        meu_tabuleiro[i] = malloc(TAM * sizeof(char));
+        tabuleiro_inimigo[i] = malloc(TAM * sizeof(char));
+    }
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
@@ -125,9 +130,9 @@ int main() {
             printf("\n\n===========================================\n");
             printf("=====  AGUARDANDO ATAQUE DO INIMIGO   =====\n");
             printf("===========================================\n");
-
-            receber_ataque(sock);
+        
             mostrar_tabuleiros();
+            receber_ataque(sock);
 
             if (verificar_derrota()) {
                 printf("\n💥 Todos os seus navios foram afundados! Voce perdeu!\n");
@@ -138,9 +143,9 @@ int main() {
             printf("\n\n===========================================\n");
             printf("=====        SUA VEZ DE ATACAR         =====\n");
             printf("===========================================\n");
-
-            realizar_ataque(sock);
+        
             mostrar_tabuleiros();
+            realizar_ataque(sock);
 
             if (verificar_vitoria()) {
                 printf("\n🎉 Todos os navios inimigos foram afundados! Voce venceu!\n");
@@ -171,6 +176,15 @@ int main() {
         closesocket(sock);
         printf("\nPartida encerrada. Voltando ao menu principal...\n");
     }
+
+    // ==== LIBERAÇÃO DA MEMÓRIA ====
+    for (int i = 0; i < TAM; i++) {
+        free(meu_tabuleiro[i]);
+        free(tabuleiro_inimigo[i]);
+    }
+
+    free(meu_tabuleiro);
+    free(tabuleiro_inimigo);
 
     WSACleanup();
     return 0;
@@ -326,8 +340,8 @@ void posicionar_barcos() {
     limpar_tela(); // limpar o terminal
 }
 
-// Espera até ser "sua vez", se por algum motivo for chamada fora de hora
 void aguardar_sua_vez() {
+    // Espera até ser "sua vez", se por algum motivo for chamada fora de hora
     while (!pode_digitar) {
         Sleep(10); // evita ocupar 100% da CPU
     }
@@ -492,38 +506,8 @@ int verificar_vitoria() {
     return acertos >= TOTAL_BLOCOS; // total atual de blocos de navios inimigos
 }
 
-char verificar_navio_afundado(char simbolo) {
-    // verifica se todas as casas de um navio específico foram acertadas
-    for (int i = 0; i < TAM; i++) {
-        for (int j = 0; j < TAM; j++) {
-            if (meu_tabuleiro[i][j] == simbolo) {
-                return 0; // ainda há casas não acertadas deste navio
-            }
-        }
-    }
-    return 1; // todas as casas deste navio foram acertadas (navio afundado)
-}
-
-char *obter_nome_navio(char simbolo) {
-    // retorna o nome do navio baseado no simbolo
-    switch (simbolo) {
-    case 'P':
-        return "PORTA-AVIOES";
-    case 'E':
-        return "ENCOURACADO";
-    case 'S':
-        return "SUBMARINO";
-    case 'D':
-        return "DESTROYER";
-    default:
-        return "NAVIO";
-    }
-}
-
-// ===============================
-// 🔹 Implementação da validação 0–9
-// ===============================
 int ler_coordenada(const char *rotulo) {
+    // Implementação da validação 0–9
     char temp[32];
     int valor;
     int valido = 0;
@@ -551,4 +535,32 @@ int ler_coordenada(const char *rotulo) {
     }
 
     return valor;
+}
+
+char verificar_navio_afundado(char simbolo) {
+    // verifica se todas as casas de um navio específico foram acertadas
+    for (int i = 0; i < TAM; i++) {
+        for (int j = 0; j < TAM; j++) {
+            if (meu_tabuleiro[i][j] == simbolo) {
+                return 0; // ainda há casas não acertadas deste navio
+            }
+        }
+    }
+    return 1; // todas as casas deste navio foram acertadas (navio afundado)
+}
+
+char *obter_nome_navio(char simbolo) {
+    // retorna o nome do navio baseado no simbolo
+    switch (simbolo) {
+    case 'P':
+        return "PORTA-AVIOES";
+    case 'E':
+        return "ENCOURACADO";
+    case 'S':
+        return "SUBMARINO";
+    case 'D':
+        return "DESTROYER";
+    default:
+        return "NAVIO";
+    }
 }
