@@ -1,0 +1,30 @@
+// -lws2_32 é necessário para usar sockets no Windows.
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar Server",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "server.c",
+                "-o",
+                "server.exe",
+                "-lws2_32"
+            ],
+            "group": { "kind": "build", "isDefault": true }
+        },
+        {
+            "label": "Compilar Client",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "client.c",
+                "-o",
+                "client.exe",
+                "-lws2_32"
+            ],
+            "group": "build"
+        }
+    ]
+}
